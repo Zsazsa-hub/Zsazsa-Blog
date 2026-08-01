@@ -1,0 +1,24 @@
+name: DB Backup (run on server via SSH)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  remote-backup:
+    name: Run backup on remote host via SSH
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run backup script on server
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            set -euo pipefail
+            if [ -n "${{ secrets.DEPLOY_PATH }}" ]; then
+              cd "${{ secrets.DEPLOY_PATH }}" || exit 1
+            fi
+            echo "Running backup script: $PWD/scripts/backup_db.sh"
+            ./scripts/backup_db.sh
