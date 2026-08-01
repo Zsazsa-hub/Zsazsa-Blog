@@ -1,0 +1,108 @@
+name: DB Backup to S3
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    env:
+      BACKUP_RETENTION_DAYS: ${{ secrets.BACKUP_RETENTION_DAYS }}
+      AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client gnupg python3 python3-pip
+          sudo apt-get install -y awscli
+
+      - name: Create DB dump
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+          DUMP_FILE="db-$TIMESTAMP.sql"
+          pg_dump "$DATABASE_URL" -F p -f "$DUMP_FILE"
+          echo "DUMP_FILE=$DUMP_FILE" >> $GITHUB_ENV
+
+      - name: Encrypt dump with GPG (optional)
+        if: ${{ secrets.BACKUP_GPG_PUBKEY || secrets.BACKUP_GPG_RECIPIENT }}
+        run: |
+          set -euo pipefail
+          TMPGNUPGHOME=$(mktemp -d)
+          export GNUPGHOME="$TMPGNUPGHOME"
+          if [ -n "${{ secrets.BACKUP_GPG_PUBKEY }}" ]; then
+            echo "${{ secrets.BACKUP_GPG_PUBKEY }}" > pubkey.asc
+            gpg --import pubkey.asc
+            RECIPIENT=$(gpg --list-keys --with-colons | awk -F: '/^pub/ {print $5; exit}') || true
+            if [ -n "$RECIPIENT" ]; then
+              gpg --batch --yes -e -r "$RECIPIENT" -o "$DUMP_FILE.gpg" "$DUMP_FILE"
+            else
+              echo "No recipient found in imported key; aborting encryption" >&2
+              exit 0
+            fi
+          else
+            gpg --batch --yes -e -r "${{ secrets.BACKUP_GPG_RECIPIENT }}" -o "$DUMP_FILE.gpg" "$DUMP_FILE"
+          fi
+          echo "UPLOAD_FILE=$DUMP_FILE.gpg" >> $GITHUB_ENV
+          rm -rf "$TMPGNUPGHOME"
+
+      - name: Upload to S3
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.local/bin:$PATH"
+          FILE_TO_UPLOAD="${UPLOAD_FILE:-${DUMP_FILE}}"
+          if [ -z "$FILE_TO_UPLOAD" ]; then
+            echo "No file to upload" >&2
+            exit 1
+          fi
+          if [ -n "${AWS_REGION:-}" ]; then
+            aws --region "$AWS_REGION" s3 cp "$FILE_TO_UPLOAD" "s3://$AWS_S3_BUCKET/"
+          else
+            aws s3 cp "$FILE_TO_UPLOAD" "s3://$AWS_S3_BUCKET/"
+          fi
+
+      - name: S3 retention cleanup
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+          BACKUP_RETENTION_DAYS: ${{ secrets.BACKUP_RETENTION_DAYS }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+import os, subprocess, json, datetime, sys
+bucket=os.environ.get('AWS_S3_BUCKET')
+days=int(os.environ.get('BACKUP_RETENTION_DAYS') or 14)
+if not bucket:
+    print('No bucket configured, skipping retention')
+    sys.exit(0)
+cmd=['aws','s3api','list-objects-v2','--bucket',bucket]
+proc=subprocess.run(cmd, capture_output=True, text=True)
+if proc.returncode!=0:
+    print('list failed', proc.stderr)
+    sys.exit(0)
+objs=json.loads(proc.stdout).get('Contents', [])
+cutoff=(datetime.datetime.utcnow()-datetime.timedelta(days=days)).replace(tzinfo=datetime.timezone.utc)
+for o in objs:
+    lm=o.get('LastModified')
+    if not lm:
+        continue
+    lm_dt=datetime.datetime.fromisoformat(lm.replace('Z','+00:00'))
+    if lm_dt < cutoff:
+        key=o['Key']
+        print('Deleting', key)
+        subprocess.run(['aws','s3api','delete-object','--bucket',bucket,'--key',key])
+PY
