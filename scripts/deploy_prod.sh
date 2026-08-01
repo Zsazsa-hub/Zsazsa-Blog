@@ -42,6 +42,14 @@ sleep 2
 
 if "${DOCKER_COMPOSE_CMD[@]}" ps --services | grep -q backend; then
   echo "Running migrations inside backend container..."
+  # Preflight: run backup before migrations
+  if [ -x scripts/backup_db.sh ]; then
+    echo "Running database backup before migrations..."
+    ./scripts/backup_db.sh || echo "Backup failed or skipped"
+  else
+    echo "No backup script found or not executable; skipping backup"
+  fi
+
   "${DOCKER_COMPOSE_CMD[@]}" exec -T backend sh -c 'npm run migrate' || echo "Migrations failed (continuing)"
 fi
 

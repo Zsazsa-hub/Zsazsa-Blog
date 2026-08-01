@@ -20,3 +20,7 @@ Notes:
 - The script will include `docker-compose.prod.yml` plus optional `docker-compose.traefik.yml` and `docker-compose.proxy.yml` if they exist.
 - Traefik requires domain DNS pointing to the server and ports 80/443 open for ACME challenge.
 - The deploy workflow in GitHub Actions can also perform this remotely if you set the SSH secrets: `SSH_PRIVATE_KEY`, `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PATH`.
+
+Backup & preflight:
+- The deploy script now runs `scripts/backup_db.sh` before migrations. This will try to create a dump using the `db` service (`pg_dump` inside container) or using `DATABASE_URL` with `pg_dump` on the host.
+- Ensure `pg_dump` is available on the server if you use an external `DATABASE_URL`.
