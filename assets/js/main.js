@@ -26,4 +26,20 @@ document.addEventListener('DOMContentLoaded', () => {
       applyTheme(nextTheme);
     });
   }
+
+  const chatToggle = document.getElementById('chat-toggle');
+  const chatPanel = document.getElementById('chat-panel');
+  const chatClose = document.getElementById('chat-close');
+
+  if (chatToggle && chatPanel) {
+    chatToggle.addEventListener('click', () => {
+      chatPanel.classList.toggle('active');
+    });
+  }
+
+  if (chatClose && chatPanel) {
+    chatClose.addEventListener('click', () => {
+      chatPanel.classList.remove('active');
+    });
+  }
 });
