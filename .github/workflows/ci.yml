@@ -24,23 +24,65 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-
-      - name: Log in to Docker registry (if provided)
-        if: ${{ secrets.DOCKER_USERNAME && secrets.DOCKER_PASSWORD }}
+      - name: Log in to GHCR
+        if: ${{ secrets.GITHUB_TOKEN }}
         uses: docker/login-action@v2
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push image
+      - name: Build and push frontend image to GHCR
         uses: docker/build-push-action@v4
         with:
           context: .
-          push: ${{ secrets.DOCKER_USERNAME && secrets.DOCKER_PASSWORD }}
+          push: true
           tags: |
-            ${{ secrets.DOCKER_USERNAME && format('{0}/{1}:latest', secrets.DOCKER_USERNAME, env.IMAGE_NAME) }}
-            ${{ secrets.DOCKER_USERNAME && format('{0}/{1}:${{ github.sha }}', secrets.DOCKER_USERNAME, env.IMAGE_NAME) }}
+            ghcr.io/${{ github.repository_owner }}/zsazsa-blog-web:latest
+            ghcr.io/${{ github.repository_owner }}/zsazsa-blog-web:${{ github.sha }}
 
-      - name: Show image tag info
+      - name: Build and push backend image to GHCR
+        uses: docker/build-push-action@v4
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/zsazsa-blog-backend:latest
+            ghcr.io/${{ github.repository_owner }}/zsazsa-blog-backend:${{ github.sha }}
+
+      - name: Scan images with Trivy
+        uses: aquasecurity/trivy-action@v1
+        with:
+          image-ref: |
+            ghcr.io/${{ github.repository_owner }}/zsazsa-blog-web:latest
+            ghcr.io/${{ github.repository_owner }}/zsazsa-blog-backend:latest
+
+      - name: Show published image info
         run: |
-          echo "IMAGE=${{ secrets.DOCKER_USERNAME || 'local' }}/${{ env.IMAGE_NAME }}:latest"
+          echo "Published images: ghcr.io/${{ github.repository_owner }}/zsazsa-blog-web:latest"
+          echo "                 ghcr.io/${{ github.repository_owner }}/zsazsa-blog-backend:latest"
+
+  apk-build:
+    name: Build Android APK (optional)
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name == 'workflow_dispatch' || (secrets.ANDROID_KEYSTORE && secrets.ANDROID_KEYSTORE_PASSWORD)
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Run APK build script
+        run: |
+          chmod +x scripts/build-apk.sh
+          ./scripts/build-apk.sh

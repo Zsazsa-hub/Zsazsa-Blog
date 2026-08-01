@@ -1,0 +1,29 @@
+version: '3.8'
+services:
+  web:
+    build: .
+    image: zsazsa-blog-web:latest
+    ports:
+      - '3000:3000'
+    depends_on:
+      - backend
+  backend:
+    build: ./backend
+    image: zsazsa-blog-backend:latest
+    environment:
+      - DATABASE_URL=postgresql://zsazsa:changeme@db:5432/zsazsa
+    ports:
+      - '4000:4000'
+    depends_on:
+      - db
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: zsazsa
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_DB: zsazsa
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+volumes:
+  db-data:
