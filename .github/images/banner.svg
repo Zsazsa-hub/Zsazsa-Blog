@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#0ea5a9" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="360" fill="url(#g)" />
+  <g transform="translate(60,60)" fill="#fff" font-family="Inter,Segoe UI,Arial,sans-serif">
+    <text x="0" y="70" font-size="54" font-weight="700">Zsazsa — Portal Digital Indonesia</text>
+    <text x="0" y="120" font-size="20" opacity="0.9">Blog • Firmware • Produk • Affiliate • Dashboard Admin</text>
+  </g>
+</svg>
