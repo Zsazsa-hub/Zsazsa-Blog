@@ -44,17 +44,25 @@
             <textarea rows="4" placeholder="Tuliskan alamat lengkap"></textarea>
           </div>
         </form>
+        <h3 style="margin-top: 24px;">Metode Pembayaran</h3>
+        <div class="card" style="margin-top: 12px; background: rgba(255,255,255,0.04);">
+          <p><strong>QRIS</strong> — Bayar via aplikasi e-wallet atau bank.</p>
+          <p><strong>Transfer Bank</strong> — BCA, BNI, Mandiri, BRI.</p>
+          <p><strong>COD</strong> — Bayar di tempat saat barang datang.</p>
+        </div>
       </section>
       <aside class="card">
-        <h3>Metode Pembayaran</h3>
-        <ul class="list">
-          <li>QRIS</li>
-          <li>Dana</li>
-          <li>GoPay</li>
-          <li>ShopeePay</li>
-          <li>COD</li>
-        </ul>
-        <a class="btn btn-primary" href="/pages/checkout.html">Konfirmasi Pesanan</a>
+        <h3>Ringkasan Belanja</h3>
+        <p>Subtotal: Rp 3.700.000</p>
+        <p>Ongkir: Rp 25.000</p>
+        <p>Biaya layanan: Rp 5.000</p>
+        <p><strong>Total: Rp 3.730.000</strong></p>
+        <div class="card" style="margin: 16px 0; background: rgba(56,189,248,0.12);">
+          <p><strong>QRIS Code</strong></p>
+          <p>Scan kode untuk pembayaran cepat.</p>
+          <p style="font-size: 0.9rem; color: var(--muted);">Status: Menunggu pembayaran</p>
+        </div>
+        <a class="btn btn-primary" href="/pages/payment-success.html">Konfirmasi Pesanan</a>
       </aside>
     </main>
   </body>
