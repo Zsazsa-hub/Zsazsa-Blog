@@ -1,0 +1,28 @@
+http:
+  routers:
+    web-router:
+      rule: "Host(`example.com`)"
+      entryPoints:
+        - web
+      service: web-service
+      middlewares:
+        - https-redirect
+
+    websecure-router:
+      rule: "Host(`example.com`)"
+      entryPoints:
+        - websecure
+      service: web-service
+      tls:
+        certResolver: letsencrypt
+
+  services:
+    web-service:
+      loadBalancer:
+        servers:
+          - url: "http://web:3000"
+
+middlewares:
+  https-redirect:
+    redirectScheme:
+      scheme: https
