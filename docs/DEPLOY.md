@@ -28,6 +28,13 @@ S3 Upload & Rotation
 	- `AWS_REGION` (optional)
 	- Ensure `aws` CLI is installed on the server and credentials (`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`) are available in the environment or instance profile.
 - The deploy script will call `scripts/backup_db.sh` which uploads the newly created backup to S3 and deletes local backup files older than `BACKUP_RETENTION_DAYS` (default 14 days).
+
+GPG Encryption for Backups
+- You can encrypt backups before upload for extra security. Two modes are supported:
+	- `BACKUP_GPG_RECIPIENT`: a GPG key recipient (key ID or email) already present in the server's GPG keyring.
+	- `BACKUP_GPG_PUBKEY_PATH`: path to an ASCII-armored public key file; the script will import it into a temporary keyring and use it to encrypt the backup.
+- Set one of the above in `.env`. Optionally set `BACKUP_DELETE_PLAIN_AFTER_ENCRYPTION=true` to remove the plaintext dump after successful encryption.
+- The script requires `gpg` to be installed on the server for encryption to work.
 Backup & preflight:
 - The deploy script now runs `scripts/backup_db.sh` before migrations. This will try to create a dump using the `db` service (`pg_dump` inside container) or using `DATABASE_URL` with `pg_dump` on the host.
 - Ensure `pg_dump` is available on the server if you use an external `DATABASE_URL`.
