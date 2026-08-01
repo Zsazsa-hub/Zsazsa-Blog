@@ -1,0 +1,10 @@
+{
+  "name": "zsazsa-blog",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "python3 -m http.server 3000",
+    "start": "python3 -m http.server 3000"
+  },
+  "description": "Portal blog, firmware, produk, affiliate, dan dashboard admin dalam bahasa Indonesia"
+}
