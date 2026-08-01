@@ -3,6 +3,12 @@ services:
   web:
     build: .
     image: zsazsa-blog-web:latest
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.zsazsa-web.rule=Host(`example.com`)"
+      - "traefik.http.routers.zsazsa-web.entrypoints=websecure"
+      - "traefik.http.routers.zsazsa-web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.zsazsa-web.loadbalancer.server.port=3000"
     ports:
       - '3000:3000'
     depends_on:
@@ -12,6 +18,12 @@ services:
     image: zsazsa-blog-backend:latest
     environment:
       - DATABASE_URL=postgresql://zsazsa:changeme@db:5432/zsazsa
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.zsazsa-backend.rule=Host(`api.example.com`)"
+      - "traefik.http.routers.zsazsa-backend.entrypoints=websecure"
+      - "traefik.http.routers.zsazsa-backend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.zsazsa-backend.loadbalancer.server.port=4000"
     ports:
       - '4000:4000'
     depends_on:

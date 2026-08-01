@@ -52,9 +52,9 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "cd ${{ secrets.DEPLOY_PATH }} && docker compose pull && docker compose up -d && docker compose ps"
 
-      - name: Run migrations on remote
+      - name: Run migrations on remote (via backend container)
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "cd ${{ secrets.DEPLOY_PATH }} && docker compose exec -T db psql -U zsazsa -d zsazsa -f schema_postgres.sql || true"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "cd ${{ secrets.DEPLOY_PATH }} && docker compose exec -T backend sh -c 'npm run migrate' || true"
 name: Deploy Zsazsa Blog
 
 on:
