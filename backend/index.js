@@ -64,4 +64,82 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// Protected route: return current user info from JWT
+function authenticateJWT(req, res, next) {
+  const auth = req.headers['authorization'];
+  if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'missing_token' });
+  const token = auth.slice(7);
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    req.user = payload;
+    next();
+  } catch (e) {
+    return res.status(401).json({ error: 'invalid_token' });
+  }
+}
+
+app.get('/api/me', authenticateJWT, async (req, res) => {
+  const payload = req.user || {};
+  // Optionally load more user data from DB
+  if (pool && payload.sub) {
+    try {
+      const { rows } = await pool.query('SELECT id, email, full_name FROM users WHERE id=$1', [payload.sub]);
+      if (rows[0]) return res.json({ user: rows[0] });
+    } catch (e) {
+      console.error('me route db error', e);
+    }
+  }
+  // Fallback: return token payload
+  res.json({ user: payload });
+});
+
+// Payment endpoints (mock)
+app.post('/api/payments/create', async (req, res) => {
+  const { order_id, method, amount, currency } = req.body || {};
+  // For demo, create a mock transaction and return payment instructions
+  const txn = {
+    id: `txn_${Date.now()}`,
+    order_id: order_id || null,
+    method: method || 'qris',
+    amount: amount || 0,
+    currency: currency || 'IDR',
+    status: 'pending',
+    created_at: new Date().toISOString()
+  };
+
+  // In production, insert into transactions table
+  if (pool) {
+    try {
+      await pool.query('INSERT INTO transactions (order_id, provider, amount, currency, status, metadata) VALUES ($1,$2,$3,$4,$5,$6)', [txn.order_id, txn.method, txn.amount, txn.currency, txn.status, JSON.stringify({ mock: true })]);
+    } catch (e) {
+      console.error('insert txn error', e);
+    }
+  }
+
+  // Return mock payment data for client
+  if (txn.method === 'crypto') {
+    txn.address = '0xDEADBEEF...';
+    txn.qr = null;
+  } else if (txn.method === 'qris') {
+    txn.qr = 'data:image/png;base64,iVBORw0K...';
+  } else if (txn.method === 'ewallet') {
+    txn.redirect_url = 'https://ewallet.example/checkout/' + txn.id;
+  }
+
+  res.json({ transaction: txn });
+});
+
+app.post('/api/payments/webhook', express.raw({ type: '*/*' }), async (req, res) => {
+  // A generic webhook endpoint: verify signature in production
+  try {
+    const body = req.body.length ? req.body.toString() : '';
+    console.log('webhook received', body.substring(0, 200));
+    // Update transaction status in DB if possible (demo only)
+    res.status(200).send('ok');
+  } catch (e) {
+    console.error('webhook error', e);
+    res.status(500).send('error');
+  }
+});
+
 app.listen(port, () => console.log(`Backend listening on ${port}`));
